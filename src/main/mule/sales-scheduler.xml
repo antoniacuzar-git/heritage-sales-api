@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	
+	<flow name="sales-schedulerFlow" doc:id="9b308d69-7adb-4849-99b6-b4d031605679" >
+		<scheduler doc:name="Scheduler" doc:id="e2af93f3-ac54-4adb-af99-8a75670bb6db" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="10000"/>
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="Logger" doc:id="dc73e4c3-0238-44ed-9038-1a04b4207290" message='#["Starting CSV Report Generation"]'/>
+		<flow-ref doc:name="sales-scheduler-database-sub-flow" doc:id="49d8d314-8b00-4182-be99-b0796cd9d77d" name="sales-scheduler-database-sub-flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="99dc5218-0743-4cb3-971a-8fced8e7ac72">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/csv header=true, quoteValues=true
+---
+payload map ((sales) -> {
+    transaction_id: sales.transaction_id,
+    source: sales.source,
+    customer_name: if (sales.customer_name != null and sizeOf(sales.customer_name) > 1) 
+                      upper(sales.customer_name[0]) ++ "****" 
+                   else 
+                   "****",
+    customer_contact: if (sales.customer_contact != null and sizeOf(sales.customer_contact) > 4) 
+                         "****" ++ sales.customer_contact[-4 to -1] 
+                      else 
+                      "****",
+	delivery_address:
+        if (sales.delivery_address != null and sizeOf(sales.delivery_address) > 6) 
+            "****" ++ sales.delivery_address[-6 to -1] 
+        else 
+        "****",
+    customer_age: sales.customer_age,
+    customer_gender: sales.customer_gender,
+    total_amount: sales.total_amount as Number {format: "0.00"},
+    payment_type: sales.payment_type,
+    transaction_date: sales.transaction_date,
+    
+    item_id: sales.item_id,
+    product_name: sales.product_name,
+    price: sales.price as Number {format: "0.00"},
+    quantity: sales.quantity
+})
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<file:write doc:name="Write" doc:id="e006705f-db86-4244-9e37-ac5c7675e664" config-ref="File_Config" path='#["sales_report_" ++ now() as String {format: "yyyyMMdd_HHmmss"} ++ ".csv"]'/>
+		<logger level="INFO" doc:name="Logger" doc:id="adc86fa9-6583-47bf-9164-a39488fb6f10" message='#["CSV Report Successfully Created"]'/>
+	</flow>
+	<sub-flow name="sales-scheduler-database-sub-flow" doc:id="f6a67fb3-223f-4f9c-8769-4a4d3af9fa3f" >
+		<logger level="INFO" doc:name="Logger" doc:id="360782a8-b81c-4938-84ad-e187fb9c85ca" message='#["Fetching Data from Database"]' />
+		<db:select doc:name="Select Sales" doc:id="c58e8770-8088-4709-aee9-d82c34322c02" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT s.transaction_id, s.source, s.customer_name, s.delivery_address, 
+       s.customer_contact, s.customer_age, s.customer_gender,
+       s.total_amount, s.payment_type, s.transaction_date,
+       si.item_id, si.product_name, si.price, si.quantity
+FROM sales s
+LEFT JOIN sales_items si
+ON s.transaction_id = si.transaction_id
+ORDER BY s.transaction_id, si.item_id;]]></db:sql>
+		</db:select>
+		<logger level="INFO" doc:name="Logger" doc:id="7826f854-583d-40a5-b904-3b7e0404d4fa" message='#["Completed Fetching Data from Database"]' />
+	</sub-flow>
+</mule>

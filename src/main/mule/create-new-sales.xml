@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+	xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd">
+	
+	<flow name="create-new-sales-flow" doc:id="f742f75a-15e0-4491-b945-016bc62ac699" >
+		<http:listener doc:name="Listener" doc:id="da08ecea-ee93-475c-91de-490460d3afc2" config-ref="HTTP_Listener_config" path="/create-new-sales" allowedMethods="POST"/>
+		<choice doc:name="Choice" doc:id="6a690550-3dce-4205-8de7-25140003bc39" >
+			<when expression="#[payload.transactionId != null and payload.salesId == null]">
+				<logger level="INFO" doc:name="Logger" doc:id="10c8e41d-a9fc-4467-a996-14e53d45ff12" message='#["Creating Sales for Transacation ID - " ++ payload.transactionId]'/>
+				<flow-ref doc:name="create-new-sales-orange-sub-flow" doc:id="13551787-6851-4c63-87b4-b9ec045bcf77" name="create-new-sales-orange-sub-flow"/>
+				<ee:transform doc:name="Transform Message" doc:id="5d28fc54-0ff1-4b1b-b11e-3f7fe33e4996">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+"Created Sales for Transaction ID - " ++ vars.newSales.sales.transaction_id
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="fd3796b3-d394-4c01-816d-0fd3dda93096" message='#["Created Sales for Transaction ID - " ++ vars.newSales.sales.transaction_id]'/>
+			
+</when>
+			<when expression="#[payload.salesId != null and payload.transactionId == null]">
+				<logger level="INFO" doc:name="Logger" doc:id="f49cac35-a90c-4043-b096-3f6e53860cfd" message='#["Creating Sales for Sales ID - " ++ payload.salesId]'/>
+				<flow-ref doc:name="create-new-sales-blue-sub-flow" doc:id="0f3a1229-6a06-4ccc-9775-42665cad623a" name="create-new-sales-blue-sub-flow"/>
+				<ee:transform doc:name="Transform Message" doc:id="7060b982-33ec-49ff-98de-9e660a5fc7f3">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+"Created Sales for Transaction ID - " ++ vars.newSales.sales.transaction_id
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="bb7c923f-397f-4713-ba3c-6a60cd7aaa08" message='#["Created Sales for Transaction ID - " ++ vars.newSales.sales.transaction_id]'/>
+			
+</when>
+			<otherwise >
+				<raise-error doc:name="Raise error" doc:id="256199a8-694c-49d3-91b8-34322d4658b8" type="ERROR: BAD_REQUEST" description="The request must contain exactly one of the following fields: 'transactionId' or 'salesId'."/>
+			
+</otherwise>
+		</choice>
+
+</flow>
+	<sub-flow name="create-new-sales-orange-sub-flow" doc:id="64db1d5b-8f0f-4723-8259-481a4e053668" >
+		<logger level="INFO" doc:name="Logger" doc:id="47834bf1-fc53-4160-9212-b8b776c78e4d" message='#["Orange App - Starting Creation of Sales - " ++ payload.transactionId]'/>
+		<ee:transform doc:name="MapOrangeSales" doc:id="85ca132e-7ce4-49cf-bef0-2c92ced6a317" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="newSales" ><![CDATA[%dw 2.0
+output application/json
+
+---
+
+{
+   sales: {
+        transaction_id: payload.transactionId,
+        source: "Orange App",
+        customer_name: payload.customer_information.name,
+        delivery_address: payload.customer_information.address,
+        customer_contact: payload.customer_information.phone,
+        customer_age: payload.customer_information.age,
+        customer_gender: payload.customer_information.gender,
+        total_amount: payload.total,
+        payment_type: payload.mop,
+        transaction_date: (payload.timestamp as LocalDateTime) as String {format: "yyyy-MM-dd HH:mm:ss"}
+
+    },
+
+    sales_items: payload.line_items map (item) -> {
+        item_id: item.lineId,
+        transaction_id: payload.transactionId,
+        product_name: item.product,
+        price: item.unitPrice,
+        quantity: item.quantity
+    }
+}
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		
+		<flow-ref doc:name="create-new-sales-database-insert-sub-flow" doc:id="a07e2515-1b4f-4eb6-b25a-106d049209c9" name="create-new-sales-database-insert-sub-flow"/>
+		<logger level="INFO" doc:name="Logger" doc:id="12ee2ec9-50ba-4b67-985a-e532d7c3f821" message='#["Orange App - Completed Creation of Sales - " ++ vars.newSales.sales.transaction_id]'/>
+	</sub-flow>
+	<sub-flow name="create-new-sales-blue-sub-flow" doc:id="f5c4058c-270a-471b-aa6f-cae33c490ef5" >
+		<logger level="INFO" doc:name="Logger" doc:id="f141cae2-6fa1-4d69-8c84-6f470a01eb1a" message='#["Blue App - Starting Creation of Sales - " ++ payload.salesId]'/>
+		<ee:transform doc:name="MapBlueSales" doc:id="1f908680-65b1-4675-9995-ad304f243bd1" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="newSales" ><![CDATA[%dw 2.0
+output application/json
+
+--- 
+
+{
+    sales: {
+        transaction_id: payload.salesId,
+        source: "Blue App",
+        customer_name: payload.fullName,
+        delivery_address: payload.deliveryLoc,
+        customer_contact: payload.contact,
+        customer_age: payload.age,
+        customer_gender: payload.gender,
+        total_amount: payload.amountDue,
+        payment_type: payload.paymentType,      
+        transaction_date: (payload.creationDate as LocalDateTime) as String {format: "yyyy-MM-dd HH:mm:ss"}
+        
+    },
+
+    sales_items: payload.products map (item) -> {
+        item_id: item.id,
+        transaction_id: payload.salesId,
+        product_name: item.name,
+        price: item.price,
+        quantity: item.qty
+    }
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="create-new-sales-database-insert-sub-flow" doc:id="43eac931-7030-4104-b231-5e7351722793" name="create-new-sales-database-insert-sub-flow"/>
+		<logger level="INFO" doc:name="Logger" doc:id="5dfe708d-e314-46d9-a2e3-d9af6c92c9dd" message='#["Blue App - Completed Creation of Sales - " ++ vars.newSales.sales.transaction_id]'/>
+	</sub-flow>
+	<sub-flow name="create-new-sales-database-insert-sub-flow" doc:id="a1272698-47cb-430f-af71-9c7024e00af0" >
+		<logger level="INFO" doc:name="Logger" doc:id="4069eae8-0901-43f9-ab92-8a5072dec103" message='#["Starting Insert to Database for Transaction ID - " ++ vars.newSales.sales.transaction_id]'/>
+		<db:insert doc:name="Insert Sales" doc:id="8d96b578-8834-43e0-b822-d8d9bf4de9e2" config-ref="Database_Config">
+			<db:sql><![CDATA[INSERT INTO sales (
+    transaction_id, source, customer_name, delivery_address,
+    customer_contact, customer_age, customer_gender,
+    total_amount, payment_type, transaction_date
+) VALUES (
+    :transaction_id, :source, :customer_name, :delivery_address,
+    :customer_contact, :customer_age, :customer_gender,
+    :total_amount, :payment_type, :transaction_date
+)
+ON DUPLICATE KEY UPDATE
+    source = VALUES(source),
+    customer_name = VALUES(customer_name),
+    delivery_address = VALUES(delivery_address),
+    customer_contact = VALUES(customer_contact),
+    customer_age = VALUES(customer_age),
+    customer_gender = VALUES(customer_gender),
+    total_amount = VALUES(total_amount),
+    payment_type = VALUES(payment_type),
+    transaction_date = VALUES(transaction_date);]]></db:sql>
+			<db:input-parameters><![CDATA[#[vars.newSales.sales]]]></db:input-parameters>
+		</db:insert>
+		<db:bulk-insert doc:name="Insert Sales Items" doc:id="0bfa72eb-659b-4e86-8458-1be02c2c0a00" config-ref="Database_Config">
+			<db:bulk-input-parameters><![CDATA[#[vars.newSales.sales_items]]]></db:bulk-input-parameters>
+			<db:sql><![CDATA[INSERT INTO sales_items (
+    item_id, transaction_id, product_name, price, quantity
+) VALUES (
+    :item_id, :transaction_id, :product_name, :price, :quantity
+)
+ON DUPLICATE KEY UPDATE
+    transaction_id = VALUES(transaction_id),
+    product_name = VALUES(product_name),
+    price = VALUES(price),
+    quantity = VALUES(quantity);]]></db:sql>
+		</db:bulk-insert>
+		<logger level="INFO" doc:name="Logger" doc:id="1780fec7-8112-4d9d-96b4-f23f69ab477c" message='#["Completed Insert to Database for Transaction ID - " ++ vars.newSales.sales.transaction_id]'/>
+	</sub-flow>
+</mule>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+	
+	<flow name="retrieve-sales-flow" doc:id="e54c1e90-b795-44f2-bbfd-a22a3b9fffe3" >
+  <http:listener doc:name="Listener" config-ref="HTTP_Listener_config" path="/retrieve-sales" allowedMethods="GET">
+        </http:listener>
+        
+         <choice doc:name="Choice" doc:id="b0b30932-272f-49ac-9c47-04f727365de9" >
+			<when expression="#[attributes.queryParams.transactionId != null]">
+				<logger level="INFO" doc:name="Logger" doc:id="144c7b6e-1f39-41e6-9135-25b461f5f673" message='#["Getting Transaction ID for - " ++ attributes.queryParams.transactionId]' />
+				<flow-ref doc:name="retrieve-sales-database-sub-flow" doc:id="7e709a77-b37e-4908-9093-655b6714eef4" name="retrieve-sales-database-sub-flow" />
+				<ee:transform doc:name="Transform to Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[ %dw 2.0
+ output application/json
+---
+ {
+      transactionId: vars.sales.transaction_id,
+      source: vars.sales.source,
+      customerName: vars.sales.customer_name,
+      deliveryAddress: vars.sales.delivery_address,
+      customerAge: vars.sales.customer_age,
+      customerGender: vars.sales.customer_gender,
+      customerContact: vars.sales.customer_contact,
+
+      items: vars.salesItems map (item) -> {
+      	itemId: item.item_id,
+  		name: item.product_name,
+  		price: item.price,
+    	quantity: item.quantity
+},
+
+     totalAmount: vars.sales.total_amount,
+	 paymentType: vars.sales.payment_type,
+ 	 transactionDate: (vars.sales.transaction_date as DateTime {format: "yyyy-MM-dd HH:mm:ss"}) as String {format: "yyyy-MM-dd'T'HH:mm:ss'Z'"}
+}
+                    ]]>
+                </ee:set-payload>
+            </ee:message>
+        </ee:transform>
+			</when>
+			<otherwise >
+				<raise-error doc:name="Raise error" doc:id="4e398c60-3a49-4205-8f33-f83806424a02" type="ERROR: BAD_REQUEST" description="transactionId Query Parameter is required"/>
+			</otherwise>
+		</choice>
+
+	
+</flow>
+	<sub-flow name="retrieve-sales-database-sub-flow" doc:id="61e64259-eec4-4b4c-ab1b-abbe670a086e" >
+		<logger level="INFO" doc:name="Logger" doc:id="dc3a9b88-0c46-453b-a1f0-26ae9bb889e3" message='#["Fetching Data from Database for Transaction ID - " ++ attributes.queryParams.transactionId]'/>
+		<db:select doc:name="Select Sales" config-ref="Database_Config" target="sales" targetValue="#[payload[0]]">
+            <db:sql><![CDATA[
+                SELECT transaction_id, source, customer_name, delivery_address, customer_contact, customer_age, customer_gender,
+                       total_amount, payment_type, transaction_date
+                FROM sales
+                WHERE transaction_id = :transactionId
+                ]]>
+            </db:sql>
+			<db:input-parameters><![CDATA[#[{
+	'transactionId': attributes.queryParams.transactionId
+
+
+}]]]></db:input-parameters>
+        
+</db:select>
+		<db:select doc:name="Select Sales Items" config-ref="Database_Config" target="salesItems">
+            <db:sql><![CDATA[
+                SELECT item_id, product_name, price, quantity
+                FROM sales_items
+                WHERE transaction_id = :transactionId
+                ]]>
+            </db:sql>
+			<db:input-parameters><![CDATA[#[{
+	'transactionId': attributes.queryParams.transactionId
+
+
+}]]]></db:input-parameters>
+        
+</db:select>
+		<logger level="INFO" doc:name="Logger" doc:id="1bdfd13d-fa7b-4cbc-82fb-57d89b492c48" message='#["Completed Fetching Data from Database for Transaction ID - " ++ attributes.queryParams.transactionId]'/>
+	</sub-flow>
+</mule>
