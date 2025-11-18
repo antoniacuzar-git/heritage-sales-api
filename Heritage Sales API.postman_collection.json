@@ -1,0 +1,113 @@
+{
+	"info": {
+		"_postman_id": "cc0cfdb3-2c29-40d1-8e80-e28620e04408",
+		"name": "Heritage Sales API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "32947705"
+	},
+	"item": [
+		{
+			"name": "Create New Sales",
+			"item": [
+				{
+					"name": "http://localhost:8081/api/create-new-sales",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n\"salesId\": \"B987654\",\r\n\"fullName\": \"Ben Blue\",\r\n\"deliveryLoc\": \"1 St. Barangay 123, Manila\",\r\n\"age\": \"29\",\r\n\"gender\": null,\r\n\"contact\": \"+639999999989\",\r\n\"products\": [\r\n{\r\n\"id\": \" B987654-001\",\r\n\"name\": \"The Chronicles of Narnia: The Lion, The Witch and the Wardrobe\",\r\n\"price\": 1499,\r\n\"qty\": 1\r\n}\r\n],\r\n\"amountDue\": 1499,\r\n\"paymentType\": \"Cash\",\r\n\"creationDate\": \"2025-09-20T10:20:00Z\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/create-new-sales",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"api",
+								"create-new-sales"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "http://localhost:8081/api/create-new-sales",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n\"transactionId\": \"Orange-001\",\r\n\"customer_information\": {\r\n\"name\": \"Bobby Ong\",\r\n\"address\": \"#5 Road, Bambang, Pasig City\",\r\n\"age\": 21,\r\n\"gender\": \"M\",\r\n\"phone\": \"+639177777787\"\r\n},\r\n\"line_items\": [\r\n{\r\n\"lineId\": \"Orange-001-001\",\r\n\"product\": \"Harry Potter and the Chamber of Secrets\",\r\n\"unitPrice\": 998,\r\n\"quantity\": 1\r\n}\r\n],\r\n\"total\": 998,\r\n\"mop\": \"Credit Card\",\r\n\"timestamp\": \"2025-09-29T10:15:00Z\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/create-new-sales",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"api",
+								"create-new-sales"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Retrieve Sales",
+			"item": [
+				{
+					"name": "http://localhost:8081/api/retrieve-sales?transactionId=B10001",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8081/api/retrieve-sales?transactionId=B10001",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"api",
+								"retrieve-sales"
+							],
+							"query": [
+								{
+									"key": "transactionId",
+									"value": "B10001"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
